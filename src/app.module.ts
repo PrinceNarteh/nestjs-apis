@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
@@ -7,6 +7,8 @@ import { AppService } from './app.service';
 import { ProductsModule } from './products/products.module';
 import { TenantsModule } from './tenants/tenants.module';
 import config from './config/config';
+import { TenantsMiddleware } from './middlewares/tenants.middleware';
+import { ProductController } from './products/products.controller';
 
 @Module({
   imports: [
@@ -28,4 +30,8 @@ import config from './config/config';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(TenantsMiddleware).forRoutes(ProductController);
+  }
+}

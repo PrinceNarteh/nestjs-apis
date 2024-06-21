@@ -1,0 +1,23 @@
+import {
+  BadRequestException,
+  Injectable,
+  NestMiddleware,
+} from '@nestjs/common';
+import { Request, Response, NextFunction } from 'express';
+
+@Injectable()
+export class TenantsMiddleware implements NestMiddleware {
+  constructor() {}
+
+  async use(req: Request, res: Response, next: NextFunction) {
+    // checks if tenantId exists in the request headers
+    const tenantId = req.headers['x-tenant-id']?.toString();
+    if (!tenantId) {
+      throw new BadRequestException('x-tenant-id not found');
+    }
+
+    // attach the tenantId to the request object
+    req['tenantId'] = tenantId;
+    next();
+  }
+}
