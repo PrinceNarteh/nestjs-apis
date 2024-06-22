@@ -7,6 +7,7 @@ import { AppService } from './app.service';
 import { StudentsModule } from './students/students.module';
 import config from './config/config';
 import { CacheModule } from '@nestjs/cache-manager';
+import { redisStore } from 'cache-manager-redis-yet';
 
 @Module({
   imports: [
@@ -22,7 +23,20 @@ import { CacheModule } from '@nestjs/cache-manager';
       }),
       inject: [ConfigService],
     }),
-    CacheModule.register({ isGlobal: true }),
+    CacheModule.registerAsync({
+      isGlobal: true,
+      inject: [ConfigService],
+      useFactory: async (config: ConfigService) => {
+        const store = await redisStore({
+          ttl: 30 * 1000,
+          socket: {
+            host: config.get('redis.host'),
+            port: config.get('redis.port'),
+          },
+        });
+        return { store };
+      },
+    }),
     StudentsModule,
   ],
   controllers: [AppController],

@@ -10,7 +10,6 @@ export class StudentsController {
   @CacheTTL(30 * 1000)
   @Get()
   async getAllStudents() {
-    console.log('Students Controller');
     return this.studentsService.getAllStudents();
   }
 }
