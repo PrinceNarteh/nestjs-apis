@@ -4,6 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { ChatModule } from './chat/chat.module';
 import config from './config/config';
 
 @Module({
@@ -20,6 +21,7 @@ import config from './config/config';
       }),
       inject: [ConfigService],
     }),
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [AppService],
