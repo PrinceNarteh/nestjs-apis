@@ -12,7 +12,7 @@ import { UserDocument } from './schemas/user.schema';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly usersRepo: UsersRepository) {}
+  constructor(private readonly usersRepo: UsersRepository) { }
   async create(createUserDto: CreateUserDto): Promise<UserDocument> {
     try {
       const user = await this.usersRepo.create(createUserDto);
@@ -21,6 +21,7 @@ export class UsersService {
       if (error.code === 11000) {
         throw new ConflictException('Email already in use');
       }
+      console.log(error);
       throw new InternalServerErrorException();
     }
   }
