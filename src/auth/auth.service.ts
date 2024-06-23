@@ -1,9 +1,13 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { v4 as uuid } from 'uuid';
 import { HashingService } from './hashing/hashing.service';
 import { CreateUserDto } from 'src/users/dto/create-user.dto';
 import { UsersService } from 'src/users/users.service';
 import { SignInDto } from './dtos/sign-in.dto';
-import { JwtService } from '@nestjs/jwt';
+import { InjectModel } from '@nestjs/mongoose';
+import { RefreshToken } from './schemas/refresh-token.schema';
+import { Model } from 'mongoose';
 
 @Injectable()
 export class AuthService {
@@ -11,7 +15,9 @@ export class AuthService {
     private readonly hashingService: HashingService,
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
-  ) { }
+    @InjectModel(RefreshToken.name)
+    private readonly refreshTokenModel: Model<RefreshToken>,
+  ) {}
 
   async signUp(userData: CreateUserDto) {
     const hashedPassword = await this.hashingService.hash(userData.password);
@@ -34,6 +40,21 @@ export class AuthService {
 
   async generateUserTokens(userId: string) {
     const accessToken = this.jwtService.sign({ userId }, { expiresIn: '1h' });
-    return { accessToken };
+    const refreshToken = uuid();
+    await this.storeRefreshToken({ userId, token: refreshToken });
+    return { accessToken, refreshToken };
+  }
+
+  async storeRefreshToken({
+    token,
+    userId,
+  }: {
+    token: string;
+    userId: string;
+  }): Promise<void> {
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + 3);
+
+    await this.refreshTokenModel.create({ token, userId, expiryDate });
   }
 }
