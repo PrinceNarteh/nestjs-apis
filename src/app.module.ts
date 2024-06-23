@@ -7,6 +7,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import config from './config/config';
+import { JwtModule } from '@nestjs/jwt';
 
 @Module({
   imports: [
@@ -15,12 +16,18 @@ import config from './config/config';
       cache: true,
       load: [config],
     }),
+    JwtModule.registerAsync({
+      inject: [ConfigService],
+      global: true,
+      useFactory: async (config: ConfigService) => ({
+        secret: config.get('jwt.secret'),
+      }),
+    }),
     MongooseModule.forRootAsync({
-      imports: [ConfigModule],
+      inject: [ConfigService],
       useFactory: async (config: ConfigService) => ({
         uri: config.getOrThrow<string>('database.uri'),
       }),
-      inject: [ConfigService],
     }),
     AuthModule,
     UsersModule,

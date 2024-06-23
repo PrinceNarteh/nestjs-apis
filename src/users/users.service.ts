@@ -4,15 +4,15 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
+import { FilterQuery } from 'mongoose';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersRepository } from './users.repository';
-import { FilterQuery } from 'mongoose';
 import { UserDocument } from './schemas/user.schema';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly usersRepo: UsersRepository) { }
+  constructor(private readonly usersRepo: UsersRepository) {}
   async create(createUserDto: CreateUserDto): Promise<UserDocument> {
     try {
       const user = await this.usersRepo.create(createUserDto);
