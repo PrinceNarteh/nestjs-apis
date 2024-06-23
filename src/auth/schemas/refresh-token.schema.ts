@@ -3,7 +3,7 @@ import { HydratedDocument, Types } from 'mongoose';
 
 export type RefreshTokenDocument = HydratedDocument<RefreshToken>;
 
-@Schema()
+@Schema({ versionKey: false, timestamps: true })
 export class RefreshToken {
   @Prop({ required: true })
   token: string;

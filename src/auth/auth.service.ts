@@ -1,13 +1,17 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
 import { JwtService } from '@nestjs/jwt';
 import { v4 as uuid } from 'uuid';
+import { Model } from 'mongoose';
 import { HashingService } from './hashing/hashing.service';
 import { CreateUserDto } from 'src/users/dto/create-user.dto';
 import { UsersService } from 'src/users/users.service';
 import { SignInDto } from './dtos/sign-in.dto';
-import { InjectModel } from '@nestjs/mongoose';
 import { RefreshToken } from './schemas/refresh-token.schema';
-import { Model } from 'mongoose';
 
 @Injectable()
 export class AuthService {
@@ -36,6 +40,17 @@ export class AuthService {
       throw new BadRequestException('Invalid credentials');
     }
     return this.generateUserTokens(user._id.toString());
+  }
+
+  async refreshToken(refreshToken: string) {
+    const token = await this.refreshTokenModel.findOne({
+      token: refreshToken,
+      expiryDate: { $gte: new Date() },
+    });
+    if (!token) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+    return this.generateUserTokens(token.userId.toString());
   }
 
   async generateUserTokens(userId: string) {
