@@ -54,7 +54,17 @@ export class AuthService {
   }): Promise<void> {
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() + 3);
-
-    await this.refreshTokenModel.create({ token, userId, expiryDate });
+    const userExists = await this.refreshTokenModel.findOneAndUpdate(
+      {
+        userId,
+      },
+      {
+        token,
+        expiryDate,
+      },
+    );
+    if (!userExists) {
+      await this.refreshTokenModel.create({ token, userId, expiryDate });
+    }
   }
 }
