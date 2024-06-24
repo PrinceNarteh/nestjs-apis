@@ -14,12 +14,16 @@ import { SignInDto } from './dtos/sign-in.dto';
 import { RefreshToken } from './schemas/refresh-token.schema';
 import { ChangePasswordDto } from './dtos/change-password.dto';
 import { Token } from 'src/types/token';
+import { ForgotPasswordDto } from './dtos/forgot-password.dto';
+import { UsersRepository } from 'src/users/users.repository';
+import { nanoid } from 'nanoid';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly hashingService: HashingService,
     private readonly usersService: UsersService,
+    private readonly usersRepo: UsersRepository,
     private readonly jwtService: JwtService,
     @InjectModel(RefreshToken.name)
     private readonly refreshTokenModel: Model<RefreshToken>,
@@ -59,6 +63,16 @@ export class AuthService {
     user.save();
 
     return { message: 'Password changed successfully' };
+  }
+
+  async forgotPassword(forgotPasswordDto: ForgotPasswordDto) {
+    const user = await this.usersRepo.findOne({
+      email: forgotPasswordDto.email,
+    });
+    if (user) {
+      const resetToken = nanoid(64);
+    }
+    return { message: 'Reset link has been sent to your email' };
   }
 
   async refreshToken(refreshToken: string): Promise<Token> {

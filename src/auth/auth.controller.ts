@@ -7,6 +7,7 @@ import { ChangePasswordDto } from './dtos/change-password.dto';
 import { User } from 'src/users/decorators/user.decorator';
 import { AuthGuard } from './guards/auth.guards';
 import { Token } from 'src/types/token';
+import { ForgotPasswordDto } from './dtos/forgot-password.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -34,5 +35,10 @@ export class AuthController {
     @User() userId: string,
   ): Promise<{ message: string }> {
     return this.authService.changePassword(userId, changePasswordDto);
+  }
+
+  @Post('forgot-password')
+  async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(forgotPasswordDto);
   }
 }
