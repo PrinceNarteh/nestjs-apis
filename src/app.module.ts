@@ -16,13 +16,7 @@ import { JwtModule } from '@nestjs/jwt';
       cache: true,
       load: [config],
     }),
-    JwtModule.registerAsync({
-      inject: [ConfigService],
-      global: true,
-      useFactory: async (config: ConfigService) => ({
-        secret: config.get('jwt.secret'),
-      }),
-    }),
+    JwtModule.register({ global: true }),
     MongooseModule.forRootAsync({
       inject: [ConfigService],
       useFactory: async (config: ConfigService) => ({

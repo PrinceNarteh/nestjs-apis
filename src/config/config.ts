@@ -6,6 +6,7 @@ export default () => ({
     uri: process.env.DB_URI,
   },
   jwt: {
-    secret: process.env.JWT_SECRET,
+    accessToken: process.env.JWT_ACCESS_TOKEN,
+    refreshToken: process.env.JWT_REFRESH_TOKEN,
   },
 });

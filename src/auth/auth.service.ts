@@ -1,32 +1,30 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
 import { JwtService } from '@nestjs/jwt';
 import { v4 as uuid } from 'uuid';
-import { Model } from 'mongoose';
+import { nanoid } from 'nanoid';
+import { ConfigService } from '@nestjs/config';
 import { HashingService } from './hashing/hashing.service';
 import { CreateUserDto } from 'src/users/dto/create-user.dto';
 import { UsersService } from 'src/users/users.service';
 import { SignInDto } from './dtos/sign-in.dto';
-import { RefreshToken } from './schemas/refresh-token.schema';
 import { ChangePasswordDto } from './dtos/change-password.dto';
 import { Token } from 'src/types/token';
 import { ForgotPasswordDto } from './dtos/forgot-password.dto';
 import { UsersRepository } from 'src/users/users.repository';
-import { nanoid } from 'nanoid';
 
 @Injectable()
 export class AuthService {
   constructor(
+    private readonly config: ConfigService,
     private readonly hashingService: HashingService,
     private readonly usersService: UsersService,
     private readonly usersRepo: UsersRepository,
     private readonly jwtService: JwtService,
-    @InjectModel(RefreshToken.name)
-    private readonly refreshTokenModel: Model<RefreshToken>,
   ) {}
 
   async signUp(userData: CreateUserDto) {
@@ -75,19 +73,14 @@ export class AuthService {
     return { message: 'Reset link has been sent to your email' };
   }
 
-  async refreshToken(refreshToken: string): Promise<Token> {
-    const token = await this.refreshTokenModel.findOne({
-      token: refreshToken,
-      expiryDate: { $gte: new Date() },
-    });
-    if (!token) {
-      throw new UnauthorizedException('Invalid refresh token');
-    }
-    return this.generateUserTokens(token.userId.toString());
+  async refreshToken(userId: string, refreshToken: string): Promise<Token> {
+    const user = await this.usersService.findById(userId);
+    if (!user.refreshToken) throw new ForbiddenException('Access Denied');
   }
 
   async generateUserTokens(userId: string): Promise<Token> {
-    const accessToken = this.jwtService.sign({ userId }, { expiresIn: '1h' });
+    const jwtPayload = { userId };
+    const accessToken = this.jwtService.sign(jwtPayload, { expiresIn: '1h' });
     const refreshToken = uuid();
     await this.storeRefreshToken({ userId, token: refreshToken });
     return { accessToken, refreshToken };
