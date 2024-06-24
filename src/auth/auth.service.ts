@@ -67,19 +67,14 @@ export class AuthService {
     token: string;
     userId: string;
   }): Promise<void> {
+    // calculate expiry date 3 days from now
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() + 3);
-    const userExists = await this.refreshTokenModel.findOneAndUpdate(
-      {
-        userId,
-      },
-      {
-        token,
-        expiryDate,
-      },
+
+    await this.refreshTokenModel.updateOne(
+      { userId },
+      { $set: { token, expiryDate } },
+      { upsert: true },
     );
-    if (!userExists) {
-      await this.refreshTokenModel.create({ token, userId, expiryDate });
-    }
   }
 }
