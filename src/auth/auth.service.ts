@@ -12,6 +12,8 @@ import { CreateUserDto } from 'src/users/dto/create-user.dto';
 import { UsersService } from 'src/users/users.service';
 import { SignInDto } from './dtos/sign-in.dto';
 import { RefreshToken } from './schemas/refresh-token.schema';
+import { ChangePasswordDto } from './dtos/change-password.dto';
+import { Token } from 'src/types/token';
 
 @Injectable()
 export class AuthService {
@@ -31,7 +33,7 @@ export class AuthService {
     });
   }
 
-  async signIn(userData: SignInDto) {
+  async signIn(userData: SignInDto): Promise<Token> {
     let user = await this.usersService.findOne({ email: userData.email });
     if (
       user &&
@@ -42,7 +44,24 @@ export class AuthService {
     return this.generateUserTokens(user._id.toString());
   }
 
-  async refreshToken(refreshToken: string) {
+  async changePassword(
+    userId: string,
+    changePasswordDto: ChangePasswordDto,
+  ): Promise<{ message: string }> {
+    const { oldPassword, newPassword } = changePasswordDto;
+    const user = await this.usersService.findById(userId);
+    const isMatch = this.hashingService.compare(oldPassword, user.password);
+    if (!isMatch) {
+      throw new UnauthorizedException();
+    }
+    const hashedPassword = await this.hashingService.hash(newPassword);
+    user.password = hashedPassword;
+    user.save();
+
+    return { message: 'Password changed successfully' };
+  }
+
+  async refreshToken(refreshToken: string): Promise<Token> {
     const token = await this.refreshTokenModel.findOne({
       token: refreshToken,
       expiryDate: { $gte: new Date() },
@@ -53,7 +72,7 @@ export class AuthService {
     return this.generateUserTokens(token.userId.toString());
   }
 
-  async generateUserTokens(userId: string) {
+  async generateUserTokens(userId: string): Promise<Token> {
     const accessToken = this.jwtService.sign({ userId }, { expiresIn: '1h' });
     const refreshToken = uuid();
     await this.storeRefreshToken({ userId, token: refreshToken });
