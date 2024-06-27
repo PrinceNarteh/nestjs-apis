@@ -16,6 +16,7 @@ import { Token } from 'src/types/token';
 import { ForgotPasswordDto } from './dtos/forgot-password.dto';
 import { UsersRepository } from 'src/users/users.repository';
 import { UserDocument } from 'src/users/schemas/user.schema';
+import { MailerService } from '@nestjs-modules/mailer';
 
 @Injectable()
 export class AuthService {
@@ -25,6 +26,7 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly usersRepo: UsersRepository,
     private readonly jwtService: JwtService,
+    private readonly mailerService: MailerService,
   ) {}
 
   async signUp(userData: CreateUserDto) {
@@ -70,6 +72,20 @@ export class AuthService {
     });
     if (user) {
       const resetToken = nanoid(64);
+      const hashedToken = await this.hashingService.hash(resetToken);
+      user.refreshToken = hashedToken;
+      await user.save();
+      const token = this.jwtService.sign(
+        { userId: user._id, token: hashedToken },
+        { expiresIn: '30m', secret: this.config.get('jwt.reset') },
+      );
+      const resetLink = `http://yourapp.com/reset-password?token=${token}`;
+      await this.mailerService.sendMail({
+        to: forgotPasswordDto.email,
+        from: 'Auth-Backend Service',
+        subject: 'Password Reset Request',
+        html: `<p>You requested a password reset. Click the link below to reset your password:</p><p><a href="${resetLink}">Reset Password</a></p>`,
+      });
     }
     return { message: 'Reset link has been sent to your email' };
   }
