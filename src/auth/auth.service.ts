@@ -5,7 +5,6 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { v4 as uuid } from 'uuid';
 import { nanoid } from 'nanoid';
 import { ConfigService } from '@nestjs/config';
 import { HashingService } from './hashing/hashing.service';
@@ -16,6 +15,7 @@ import { ChangePasswordDto } from './dtos/change-password.dto';
 import { Token } from 'src/types/token';
 import { ForgotPasswordDto } from './dtos/forgot-password.dto';
 import { UsersRepository } from 'src/users/users.repository';
+import { UserDocument } from 'src/users/schemas/user.schema';
 
 @Injectable()
 export class AuthService {
@@ -43,7 +43,8 @@ export class AuthService {
     ) {
       throw new BadRequestException('Invalid credentials');
     }
-    return this.generateUserTokens(user._id.toString());
+    const tokens = await this.generateUserTokens(user);
+    return tokens;
   }
 
   async changePassword(
@@ -73,34 +74,42 @@ export class AuthService {
     return { message: 'Reset link has been sent to your email' };
   }
 
-  async refreshToken(userId: string, refreshToken: string): Promise<Token> {
-    const user = await this.usersService.findById(userId);
-    if (!user.refreshToken) throw new ForbiddenException('Access Denied');
+  async refreshToken(refreshToken: string): Promise<Token> {
+    try {
+      const payload = this.jwtService.verify(refreshToken, {
+        secret: this.config.get('jwt.refreshToken'),
+      });
+      const user = await this.usersRepo.findById(payload.userId);
+      if (
+        !user ||
+        !user.refreshToken ||
+        !(await this.hashingService.compare(refreshToken, user.refreshToken))
+      ) {
+        throw new ForbiddenException('Access Denied');
+      }
+      return this.generateUserTokens(user);
+    } catch (error) {
+      console.log(error);
+    }
   }
 
-  async generateUserTokens(userId: string): Promise<Token> {
-    const jwtPayload = { userId };
-    const accessToken = this.jwtService.sign(jwtPayload, { expiresIn: '1h' });
-    const refreshToken = uuid();
-    await this.storeRefreshToken({ userId, token: refreshToken });
+  async generateUserTokens(user: UserDocument): Promise<Token> {
+    const jwtPayload = { userId: user._id.toString() };
+
+    const [accessToken, refreshToken] = await Promise.all([
+      this.jwtService.sign(jwtPayload, {
+        expiresIn: '1h',
+        secret: this.config.get('jwt.accessToken'),
+      }),
+      this.jwtService.sign(jwtPayload, {
+        expiresIn: '7d',
+        secret: this.config.get('jwt.refreshToken'),
+      }),
+    ]);
+
+    user.refreshToken = await this.hashingService.hash(refreshToken);
+    await user.save();
+
     return { accessToken, refreshToken };
-  }
-
-  async storeRefreshToken({
-    token,
-    userId,
-  }: {
-    token: string;
-    userId: string;
-  }): Promise<void> {
-    // calculate expiry date 3 days from now
-    const expiryDate = new Date();
-    expiryDate.setDate(expiryDate.getDate() + 3);
-
-    await this.refreshTokenModel.updateOne(
-      { userId },
-      { $set: { token, expiryDate } },
-      { upsert: true },
-    );
   }
 }
