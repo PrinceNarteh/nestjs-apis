@@ -16,6 +16,9 @@ export class User {
 
   @Prop({ default: null })
   refreshToken: string | null;
+
+  @Prop({ default: null })
+  resetToken: string | null;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

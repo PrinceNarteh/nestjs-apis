@@ -4,7 +4,7 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import { JwtService, TokenExpiredError } from '@nestjs/jwt';
 import { nanoid } from 'nanoid';
 import { ConfigService } from '@nestjs/config';
 import { HashingService } from './hashing/hashing.service';
@@ -66,7 +66,9 @@ export class AuthService {
     return { message: 'Password changed successfully' };
   }
 
-  async forgotPassword(forgotPasswordDto: ForgotPasswordDto) {
+  async forgotPassword(
+    forgotPasswordDto: ForgotPasswordDto,
+  ): Promise<{ message: string }> {
     try {
       const user = await this.usersRepo.findOne({
         email: forgotPasswordDto.email,
@@ -74,10 +76,10 @@ export class AuthService {
       if (user) {
         const resetToken = nanoid(64);
         const hashedToken = await this.hashingService.hash(resetToken);
-        user.refreshToken = hashedToken;
+        user.resetToken = hashedToken;
         await user.save();
         const token = this.jwtService.sign(
-          { userId: user._id, token: hashedToken },
+          { userId: user._id, token: resetToken },
           { expiresIn: '30m', secret: this.config.get('jwt.resetToken') },
         );
         const resetLink = `http://yourapp.com/reset-password?token=${token}`;
@@ -91,6 +93,34 @@ export class AuthService {
       return { message: 'Reset link has been sent to your email' };
     } catch (error) {
       console.log(error);
+    }
+  }
+
+  async resetPassword(newPassword: string, resetToken: string) {
+    try {
+      const { userId, token }: { userId: string; token: string } =
+        this.jwtService.verify(resetToken, {
+          secret: this.config.get('jwt.resetToken'),
+        });
+
+      const user = await this.usersRepo.findById(userId);
+      if (
+        !user ||
+        !(await this.hashingService.compare(token, user.resetToken))
+      ) {
+        throw new BadRequestException('Invalid token');
+      }
+      user.password = await this.hashingService.hash(newPassword);
+      user.resetToken = null;
+      await user.save();
+      return {
+        message: 'Password changed successfully.',
+      };
+    } catch (error) {
+      if (error instanceof TokenExpiredError) {
+        throw new BadRequestException('Token expired');
+      }
+      throw new BadRequestException('Invalid token');
     }
   }
 
