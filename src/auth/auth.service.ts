@@ -38,9 +38,9 @@ export class AuthService {
   }
 
   async signIn(userData: SignInDto): Promise<Token> {
-    let user = await this.usersService.findOne({ email: userData.email });
+    let user = await this.usersRepo.findOne({ email: userData.email });
     if (
-      user &&
+      !user ||
       !(await this.hashingService.compare(userData.password, user.password))
     ) {
       throw new BadRequestException('Invalid credentials');
@@ -67,27 +67,31 @@ export class AuthService {
   }
 
   async forgotPassword(forgotPasswordDto: ForgotPasswordDto) {
-    const user = await this.usersRepo.findOne({
-      email: forgotPasswordDto.email,
-    });
-    if (user) {
-      const resetToken = nanoid(64);
-      const hashedToken = await this.hashingService.hash(resetToken);
-      user.refreshToken = hashedToken;
-      await user.save();
-      const token = this.jwtService.sign(
-        { userId: user._id, token: hashedToken },
-        { expiresIn: '30m', secret: this.config.get('jwt.reset') },
-      );
-      const resetLink = `http://yourapp.com/reset-password?token=${token}`;
-      await this.mailerService.sendMail({
-        to: forgotPasswordDto.email,
-        from: 'Auth-Backend Service',
-        subject: 'Password Reset Request',
-        html: `<p>You requested a password reset. Click the link below to reset your password:</p><p><a href="${resetLink}">Reset Password</a></p>`,
+    try {
+      const user = await this.usersRepo.findOne({
+        email: forgotPasswordDto.email,
       });
+      if (user) {
+        const resetToken = nanoid(64);
+        const hashedToken = await this.hashingService.hash(resetToken);
+        user.refreshToken = hashedToken;
+        await user.save();
+        const token = this.jwtService.sign(
+          { userId: user._id, token: hashedToken },
+          { expiresIn: '30m', secret: this.config.get('jwt.resetToken') },
+        );
+        const resetLink = `http://yourapp.com/reset-password?token=${token}`;
+        await this.mailerService.sendMail({
+          to: forgotPasswordDto.email,
+          from: 'No Reply <prince@email.com>',
+          subject: 'Password Reset Request',
+          html: `<p>You requested a password reset. Click the link below to reset your password:</p><p><a href="${resetLink}">Reset Password</a></p>`,
+        });
+      }
+      return { message: 'Reset link has been sent to your email' };
+    } catch (error) {
+      console.log(error);
     }
-    return { message: 'Reset link has been sent to your email' };
   }
 
   async refreshToken(refreshToken: string): Promise<Token> {

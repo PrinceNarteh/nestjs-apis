@@ -8,6 +8,7 @@ export default () => ({
   jwt: {
     accessToken: process.env.JWT_ACCESS_TOKEN,
     refreshToken: process.env.JWT_REFRESH_TOKEN,
+    resetToken: process.env.JWT_RESET_TOKEN,
   },
   mail: {
     host: process.env.MAIL_HOST,
