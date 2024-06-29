@@ -9,6 +9,7 @@ import { TenantsModule } from './tenants/tenants.module';
 import config from './config/config';
 import { TenantsMiddleware } from './middlewares/tenants.middleware';
 import { ProductController } from './products/products.controller';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { ProductController } from './products/products.controller';
     }),
     ProductsModule,
     TenantsModule,
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [AppService],
